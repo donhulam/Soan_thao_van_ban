@@ -22,7 +22,7 @@ Nhiệm vụ chính của bạn là hỗ trợ người dùng tạo lập các l
 
 1.  **Thể thức và Bố cục:** Đảm bảo mọi văn bản được trình bày đúng thể thức, bố cục chuẩn theo Nghị định 30/2020/NĐ-CP (Quốc hiệu, Tiêu ngữ, tên cơ quan, số/ký hiệu, địa danh, ngày tháng, v.v.).
 2.  **Ngôn ngữ:** Sử dụng ngôn ngữ hành chính chuẩn xác, trang trọng, khách quan, không sai lỗi chính tả.
-3.  **Định dạng:** Phản hồi của bạn phải là dự thảo văn bản hoàn chỉnh. Sử dụng định dạng Markdown (ví dụ: tiêu đề \`#\`, in đậm \`**text**\`, gạch đầu dòng \`-\`) để cấu trúc văn bản rõ ràng, dễ đọc, và dễ sao chép.
+3.  **Định dạng:** Phản hồi của bạn phải là dự thảo văn bản hoàn chỉnh. **Chỉ sử dụng định dạng Markdown** (ví dụ: tiêu đề \`#\`, in đậm \`**text**\`, gạch đầu dòng \`-\`) để cấu trúc văn bản rõ ràng, dễ đọc, và dễ sao chép. **Tuyệt đối không sử dụng các thẻ HTML** như \`<table>\`, \`<div>\`, \`<p>\`, hay \`<b>\`.
 4.  **Xử lý thông tin đầu vào:**
     *   Phân tích kỹ lưỡng các thông tin chi tiết người dùng cung cấp bên dưới (Loại văn bản, Trích yếu, Nội dung, Căn cứ, Dữ liệu,...).
     *   Nếu người dùng tải lên các tệp tài liệu liên quan (hình ảnh, PDF), hãy đọc, trích xuất tất cả thông tin liên quan (ví dụ: dữ liệu từ biểu đồ, ý chính từ văn bản, bối cảnh từ ảnh) và kết hợp thông tin đó vào văn bản một cách tự nhiên và chính xác.
@@ -57,7 +57,7 @@ Bây giờ, hãy bắt đầu soạn thảo văn bản dựa trên các thông t
   return parts;
 };
 
-export const generateSpeechStream = async (data: FormData, contextFileParts: Part[], keyPointsFileParts: Part[]) => {
+export const generateDocumentStream = async (data: FormData, contextFileParts: Part[], keyPointsFileParts: Part[]) => {
   const parts = buildContentParts(data, contextFileParts, keyPointsFileParts);
   
   const contents = { parts };
@@ -69,16 +69,16 @@ export const generateSpeechStream = async (data: FormData, contextFileParts: Par
     });
     return stream;
   } catch (error) {
-    console.error("Error generating speech:", error);
+    console.error("Error generating document:", error);
     throw new Error("Không thể tạo nội dung. Vui lòng thử lại.");
   }
 };
 
-export const generateTitle = async (speechContent: string): Promise<string> => {
+export const generateTitle = async (documentContent: string): Promise<string> => {
   try {
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
-      contents: `Dựa vào nội dung văn bản sau, hãy tạo một tiêu đề tóm tắt ngắn gọn và súc tích (dưới 15 từ):\n\n---\n\n${speechContent}`,
+      contents: `Dựa vào nội dung văn bản sau, hãy tạo một tiêu đề tóm tắt ngắn gọn và súc tích (dưới 15 từ):\n\n---\n\n${documentContent}`,
     });
     // Clean up the title, remove quotes if any
     return response.text.trim().replace(/^"|"$/g, '');
@@ -89,9 +89,9 @@ export const generateTitle = async (speechContent: string): Promise<string> => {
   }
 };
 
-export const generateChatResponseStream = async (history: Content[], currentSpeech: string) => {
-  if (!currentSpeech) {
-    throw new Error("Cannot generate chat response without a speech context.");
+export const generateChatResponseStream = async (history: Content[], currentDocument: string) => {
+  if (!currentDocument) {
+    throw new Error("Cannot generate chat response without a document context.");
   }
 
   const systemInstruction = `
@@ -102,7 +102,7 @@ Bạn là một chuyên gia về nghiệp vụ văn thư và soạn thảo văn 
 1.  **Đọc kỹ yêu cầu** của người dùng trong tin nhắn cuối cùng.
 2.  Dựa trên yêu cầu đó, hãy **chỉnh sửa văn bản hiện tại** được cung cấp dưới đây.
 3.  **Luôn luôn trả về TOÀN BỘ VĂN BẢN ĐÃ ĐƯỢC CHỈNH SỬA**. Không đưa ra lời giải thích, bình luận, hay đoạn văn giới thiệu nào khác. Chỉ trả về nội dung văn bản hoàn chỉnh sau khi đã chỉnh sửa.
-4.  Giữ nguyên cấu trúc và định dạng Markdown của văn bản trừ khi người dùng yêu cầu thay đổi.
+4.  **Định dạng:** Chỉ sử dụng định dạng Markdown. **Tuyệt đối không sử dụng các thẻ HTML.** Giữ nguyên cấu trúc và định dạng Markdown của văn bản trừ khi người dùng yêu cầu thay đổi.
 
 # Nguyên tắc tương tác
 *   **Chuyên nghiệp và chính xác:** Tông giọng luôn chuyên nghiệp, khách quan. Mọi chỉnh sửa phải tuân thủ quy định về thể thức và ngôn ngữ hành chính.
@@ -111,7 +111,7 @@ Bạn là một chuyên gia về nghiệp vụ văn thư và soạn thảo văn 
 
 **Văn bản hiện tại để bạn chỉnh sửa:**
 ---
-${currentSpeech}
+${currentDocument}
 ---
 `;
   

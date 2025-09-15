@@ -11,6 +11,13 @@ interface SpeechOutputProps {
 const SpeechOutput: React.FC<SpeechOutputProps> = ({ content }) => {
   const [isCopied, setIsCopied] = useState(false);
 
+  // Function to remove HTML tags. This is a fallback in case the AI model
+  // accidentally includes HTML instead of pure Markdown.
+  const stripHtml = (html: string): string => {
+    if (!html) return '';
+    return html.replace(/<\/?[^>]+(>|$)/g, "");
+  };
+
   const handleCopy = () => {
     if (isCopied) return;
 
@@ -41,7 +48,7 @@ const SpeechOutput: React.FC<SpeechOutputProps> = ({ content }) => {
         .trim();
     };
     
-    const plainTextContent = stripMarkdown(content);
+    const plainTextContent = stripMarkdown(stripHtml(content));
 
     navigator.clipboard.writeText(plainTextContent).then(() => {
       setIsCopied(true);
@@ -58,7 +65,7 @@ const SpeechOutput: React.FC<SpeechOutputProps> = ({ content }) => {
       <div className="flex-grow overflow-y-auto custom-scrollbar pr-4">
         <div className="prose prose-sm max-w-none prose-p:my-3 prose-ul:my-3 prose-li:my-1 bg-white p-6 rounded-lg border border-gray-200 shadow-sm h-full">
           <ReactMarkdown remarkPlugins={[remarkGfm]}>
-            {content}
+            {stripHtml(content)}
           </ReactMarkdown>
         </div>
       </div>

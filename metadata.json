@@ -1,5 +1,5 @@
 {
-  "name": "Trợ lý AI soạn thảo văn bản",
-  "description": "Một ứng dụng AI giúp hỗ trợ dự thảo các văn bản như: Công văn, Báo cáo, Kế hoạch, Tờ trình... dựa trên các thông tin chi tiết được cung cấp, đảm bảo văn bản phù hợp với bối cảnh và chuyên nghiệp.",
+  "name": "Trợ lý AI soạn thảo văn bản 1.0",
+  "description": "Ứng dụng AI giúp hỗ trợ dự thảo các văn bản như: Công văn, Báo cáo, Kế hoạch, Tờ trình... dựa trên các thông tin chi tiết được cung cấp, đảm bảo văn bản phù hợp với bối cảnh và chuyên nghiệp.",
   "requestFramePermissions": []
 }

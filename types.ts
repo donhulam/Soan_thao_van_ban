@@ -10,7 +10,7 @@ export interface FormData {
   keyPoints: string;
 }
 
-export interface SpeechItem {
+export interface DocumentItem {
   id: string;
   title: string;
   content: string;

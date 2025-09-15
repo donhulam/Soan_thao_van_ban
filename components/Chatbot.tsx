@@ -15,11 +15,11 @@ interface Message {
 }
 
 interface ChatbotProps {
-  generatedSpeech: string;
-  onSpeechUpdate: (newSpeech: string, isFinal?: boolean) => void;
+  generatedDocument: string;
+  onDocumentUpdate: (newDocument: string, isFinal?: boolean) => void;
 }
 
-const Chatbot: React.FC<ChatbotProps> = ({ generatedSpeech, onSpeechUpdate }) => {
+const Chatbot: React.FC<ChatbotProps> = ({ generatedDocument, onDocumentUpdate }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [userInput, setUserInput] = useState('');
@@ -27,16 +27,22 @@ const Chatbot: React.FC<ChatbotProps> = ({ generatedSpeech, onSpeechUpdate }) =>
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Function to remove HTML tags as a fallback for clean display
+  const stripHtml = (html: string): string => {
+    if (!html) return '';
+    return html.replace(/<\/?[^>]+(>|$)/g, "");
+  };
+
   useEffect(() => {
     // This effect runs when the component mounts (i.e., when a new document session starts via `key` prop)
-    if (generatedSpeech) {
+    if (generatedDocument) {
       setMessages([
         {
           role: 'model',
           text: 'Xin chào! Bạn muốn chỉnh sửa hay cải thiện điều gì trong văn bản này không?',
         },
       ]);
-      setIsExpanded(true); // Automatically expand when a new speech is ready
+      setIsExpanded(true); // Automatically expand when a new document is ready
     } else {
         setMessages([]);
         setIsExpanded(false);
@@ -74,7 +80,7 @@ const Chatbot: React.FC<ChatbotProps> = ({ generatedSpeech, onSpeechUpdate }) =>
     }));
 
     try {
-      const stream = await generateChatResponseStream(historyForAPI, generatedSpeech);
+      const stream = await generateChatResponseStream(historyForAPI, generatedDocument);
       
       let modelResponse = '';
       setMessages((prev) => [...prev, { role: 'model', text: '' }]);
@@ -86,12 +92,12 @@ const Chatbot: React.FC<ChatbotProps> = ({ generatedSpeech, onSpeechUpdate }) =>
           newMessages[newMessages.length - 1].text = modelResponse;
           return newMessages;
         });
-        onSpeechUpdate(modelResponse, false); // Real-time preview update
+        onDocumentUpdate(modelResponse, false); // Real-time preview update
       }
 
-      // After the stream is complete, update the main speech content in the parent
+      // After the stream is complete, update the main document content in the parent
       if (modelResponse.trim()) {
-        onSpeechUpdate(modelResponse.trim(), true); // Final, saving update
+        onDocumentUpdate(modelResponse.trim(), true); // Final, saving update
       }
     } catch (error) {
       console.error('Chat error:', error);
@@ -110,7 +116,7 @@ const Chatbot: React.FC<ChatbotProps> = ({ generatedSpeech, onSpeechUpdate }) =>
     }
   };
   
-  const isDisabled = !generatedSpeech;
+  const isDisabled = !generatedDocument;
 
   return (
     <div className={`mt-6 border rounded-lg ${isDisabled ? 'bg-gray-100' : 'bg-white'}`}>
@@ -142,7 +148,7 @@ const Chatbot: React.FC<ChatbotProps> = ({ generatedSpeech, onSpeechUpdate }) =>
                       : 'bg-gray-100 text-gray-800'
                   }`}
                 >
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.text}</ReactMarkdown>
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{stripHtml(msg.text)}</ReactMarkdown>
                 </div>
               </div>
             ))}

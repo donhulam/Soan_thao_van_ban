@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import type { FormData, SpeechItem } from './types';
+import type { FormData, DocumentItem } from './types';
 import { DOCUMENT_TYPES } from './constants';
-import { generateSpeechStream, generateTitle } from './services/geminiService';
+import { generateDocumentStream, generateTitle } from './services/geminiService';
 import InputControl from './components/InputControl';
 import AIIcon from './components/icons/AIIcon';
 import DocumentIcon from './components/icons/DocumentIcon';
@@ -9,8 +9,10 @@ import SparkleIcon from './components/icons/SparkleIcon';
 import TrashIcon from './components/icons/TrashIcon';
 import PaperclipIcon from './components/icons/PaperclipIcon';
 import XIcon from './components/icons/XIcon';
+import InfoIcon from './components/icons/InfoIcon';
 import SpeechOutput from './components/SpeechOutput';
 import Chatbot from './components/Chatbot';
+import Modal from './components/Modal';
 import type { Part } from '@google/genai';
 
 
@@ -29,32 +31,33 @@ const App: React.FC = () => {
   const [formData, setFormData] = useState<FormData>(initialFormData);
   const [contextFiles, setContextFiles] = useState<File[]>([]);
   const [keyPointsFiles, setKeyPointsFiles] = useState<File[]>([]);
-  const [generatedSpeech, setGeneratedSpeech] = useState<string>('');
+  const [generatedDocument, setGeneratedDocument] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'result' | 'saved'>('result');
-  const [savedSpeeches, setSavedSpeeches] = useState<SpeechItem[]>([]);
-  const [activeSpeechId, setActiveSpeechId] = useState<string | null>(null);
+  const [savedDocuments, setSavedDocuments] = useState<DocumentItem[]>([]);
+  const [activeDocumentId, setActiveDocumentId] = useState<string | null>(null);
   const [chatSessionId, setChatSessionId] = useState<string | undefined>();
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     try {
-      const storedSpeeches = localStorage.getItem('savedSpeeches');
-      if (storedSpeeches) {
-        setSavedSpeeches(JSON.parse(storedSpeeches));
+      const storedDocuments = localStorage.getItem('savedDocuments');
+      if (storedDocuments) {
+        setSavedDocuments(JSON.parse(storedDocuments));
       }
     } catch (error) {
-      console.error("Failed to load speeches from localStorage", error);
+      console.error("Failed to load documents from localStorage", error);
     }
   }, []);
 
   useEffect(() => {
     try {
-        localStorage.setItem('savedSpeeches', JSON.stringify(savedSpeeches));
+        localStorage.setItem('savedDocuments', JSON.stringify(savedDocuments));
     } catch (error) {
-        console.error("Failed to save speeches to localStorage", error);
+        console.error("Failed to save documents to localStorage", error);
     }
-  }, [savedSpeeches]);
+  }, [savedDocuments]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -65,9 +68,9 @@ const App: React.FC = () => {
     setFormData(initialFormData);
     setContextFiles([]);
     setKeyPointsFiles([]);
-    setGeneratedSpeech('');
+    setGeneratedDocument('');
     setError(null);
-    setActiveSpeechId(null);
+    setActiveDocumentId(null);
   };
 
   const handleContextFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -123,10 +126,10 @@ const App: React.FC = () => {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
-    setGeneratedSpeech('');
+    setGeneratedDocument('');
     setActiveTab('result');
     
-    let finalSpeech = '';
+    let finalDocument = '';
 
     try {
       const isProcessableFile = (file: File) => file.type.startsWith('image/') || file.type === 'application/pdf';
@@ -143,25 +146,25 @@ const App: React.FC = () => {
         keyPointsFilesToProcess.map(fileToGenerativePart)
       );
       
-      const stream = await generateSpeechStream(formData, contextFileParts, keyPointsFileParts);
+      const stream = await generateDocumentStream(formData, contextFileParts, keyPointsFileParts);
       
       for await (const chunk of stream) {
         const text = chunk.text;
-        setGeneratedSpeech((prev) => prev + text);
-        finalSpeech += text;
+        setGeneratedDocument((prev) => prev + text);
+        finalDocument += text;
       }
 
-      if (finalSpeech) {
-        const speechTitle = await generateTitle(finalSpeech);
-        const newSpeech: SpeechItem = {
+      if (finalDocument) {
+        const documentTitle = await generateTitle(finalDocument);
+        const newDocument: DocumentItem = {
             id: crypto.randomUUID(),
-            title: speechTitle,
-            content: finalSpeech,
+            title: documentTitle,
+            content: finalDocument,
             timestamp: Date.now(),
         };
-        setSavedSpeeches(prev => [newSpeech, ...prev]);
-        setActiveSpeechId(newSpeech.id);
-        setChatSessionId(crypto.randomUUID()); // Reset chat session on new speech
+        setSavedDocuments(prev => [newDocument, ...prev]);
+        setActiveDocumentId(newDocument.id);
+        setChatSessionId(crypto.randomUUID()); // Reset chat session on new document
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Đã có lỗi xảy ra');
@@ -170,43 +173,43 @@ const App: React.FC = () => {
     }
   };
 
-  const handleViewSaved = (speechId: string) => {
-    const speechToView = savedSpeeches.find(s => s.id === speechId);
-    if (speechToView) {
-        setGeneratedSpeech(speechToView.content);
+  const handleViewSaved = (documentId: string) => {
+    const documentToView = savedDocuments.find(s => s.id === documentId);
+    if (documentToView) {
+        setGeneratedDocument(documentToView.content);
         setActiveTab('result');
         setError(null);
-        setActiveSpeechId(speechToView.id);
-        setChatSessionId(crypto.randomUUID()); // Also reset chat for a saved speech
+        setActiveDocumentId(documentToView.id);
+        setChatSessionId(crypto.randomUUID()); // Also reset chat for a saved document
     }
   };
 
-  const handleDeleteSaved = (speechId: string) => {
-    setSavedSpeeches(prev => prev.filter(s => s.id !== speechId));
+  const handleDeleteSaved = (documentId: string) => {
+    setSavedDocuments(prev => prev.filter(s => s.id !== documentId));
   };
 
-  const handleSpeechUpdate = (newSpeech: string, isFinal: boolean = false) => {
-    setGeneratedSpeech(newSpeech);
+  const handleDocumentUpdate = (newDocument: string, isFinal: boolean = false) => {
+    setGeneratedDocument(newDocument);
 
-    if (isFinal && activeSpeechId) {
-      setSavedSpeeches(prevSpeeches => {
-        const newSpeeches = prevSpeeches.map(speech => {
-          if (speech.id === activeSpeechId) {
+    if (isFinal && activeDocumentId) {
+      setSavedDocuments(prevDocuments => {
+        const newDocuments = prevDocuments.map(doc => {
+          if (doc.id === activeDocumentId) {
             return {
-              ...speech,
-              content: newSpeech,
+              ...doc,
+              content: newDocument,
               timestamp: Date.now(),
             };
           }
-          return speech;
+          return doc;
         });
         
-        const updatedSpeechIndex = newSpeeches.findIndex(s => s.id === activeSpeechId);
-        if (updatedSpeechIndex > 0) {
-            const updatedSpeech = newSpeeches.splice(updatedSpeechIndex, 1)[0];
-            newSpeeches.unshift(updatedSpeech);
+        const updatedDocumentIndex = newDocuments.findIndex(s => s.id === activeDocumentId);
+        if (updatedDocumentIndex > 0) {
+            const updatedDocument = newDocuments.splice(updatedDocumentIndex, 1)[0];
+            newDocuments.unshift(updatedDocument);
         }
-        return newSpeeches;
+        return newDocuments;
       });
     }
   };
@@ -233,10 +236,21 @@ const App: React.FC = () => {
     <div className="min-h-screen bg-gray-50 font-sans text-gray-800 p-4 sm:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto">
         <header className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Trợ lý trí tuệ nhân tạo AI</h1>
-          <p className="text-gray-600 mt-1">
-            Hỗ trợ dự thảo các văn bản như: Công văn, Báo cáo, Kế hoạch, Tờ trình...
-          </p>
+            <div className="flex justify-between items-start">
+                <div>
+                    <h1 className="text-3xl font-bold text-gray-900">Trợ lý trí tuệ nhân tạo AI</h1>
+                    <p className="text-gray-600 mt-1">
+                        Hỗ trợ dự thảo các văn bản như: Công văn, Báo cáo, Kế hoạch, Tờ trình...
+                    </p>
+                </div>
+                <button 
+                    onClick={() => setIsModalOpen(true)}
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white text-gray-700 font-medium hover:bg-gray-200 transition-colors duration-200 text-sm border border-gray-300 shadow-sm"
+                >
+                    <InfoIcon className="w-4 h-4" />
+                    Giới thiệu & Hướng dẫn
+                </button>
+            </div>
         </header>
 
         <main className="grid grid-cols-1 lg:grid-cols-5 gap-8">
@@ -361,8 +375,8 @@ const App: React.FC = () => {
             </form>
             <Chatbot
               key={chatSessionId}
-              generatedSpeech={generatedSpeech}
-              onSpeechUpdate={handleSpeechUpdate}
+              generatedDocument={generatedDocument}
+              onDocumentUpdate={handleDocumentUpdate}
             />
           </aside>
 
@@ -401,7 +415,7 @@ const App: React.FC = () => {
             <div className="p-6 flex-grow flex flex-col overflow-hidden bg-gray-50">
                 {activeTab === 'result' && (
                   <>
-                    {isLoading && !generatedSpeech && (
+                    {isLoading && !generatedDocument && (
                         <div className="flex-grow flex flex-col items-center justify-center text-center text-gray-500">
                             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-teal-600 mb-4"></div>
                             <p className="font-medium">AI đang suy nghĩ...</p>
@@ -416,20 +430,20 @@ const App: React.FC = () => {
                             </div>
                         </div>
                     )}
-                    {!isLoading && !error && !generatedSpeech && (
+                    {!isLoading && !error && !generatedDocument && (
                         <div className="flex-grow flex flex-col items-center justify-center text-center text-gray-400">
                             <AIIcon className="w-16 h-16 mb-4"/>
                             <p className="font-medium text-gray-600">Văn bản do AI tạo ra sẽ hiển thị ở khu vực này</p>
                         </div>
                     )}
-                    {(generatedSpeech || (isLoading && generatedSpeech)) && (
-                        <SpeechOutput content={generatedSpeech} />
+                    {(generatedDocument || (isLoading && generatedDocument)) && (
+                        <SpeechOutput content={generatedDocument} />
                     )}
                   </>
                 )}
                 {activeTab === 'saved' && (
                   <div className="flex-grow overflow-y-auto custom-scrollbar pr-2">
-                    {savedSpeeches.length === 0 ? (
+                    {savedDocuments.length === 0 ? (
                       <div className="flex-grow flex flex-col items-center justify-center text-center text-gray-400 h-full">
                           <DocumentIcon className="w-16 h-16 mb-4"/>
                           <p className="font-medium text-gray-600">Chưa có nội dung nào được lưu.</p>
@@ -437,15 +451,15 @@ const App: React.FC = () => {
                       </div>
                     ) : (
                       <div className="space-y-4">
-                        {savedSpeeches.map(speech => (
-                          <div key={speech.id} className="bg-white p-4 rounded-lg border border-gray-200 transition-shadow hover:shadow-sm">
-                            <h3 className="font-semibold text-gray-800 mb-2 truncate" title={speech.title}>
-                              {speech.title}
+                        {savedDocuments.map(doc => (
+                          <div key={doc.id} className="bg-white p-4 rounded-lg border border-gray-200 transition-shadow hover:shadow-sm">
+                            <h3 className="font-semibold text-gray-800 mb-2 truncate" title={doc.title}>
+                              {doc.title}
                             </h3>
-                            <p className="text-xs text-gray-500">Đã lưu: {formatDate(speech.timestamp)}</p>
+                            <p className="text-xs text-gray-500">Đã lưu: {formatDate(doc.timestamp)}</p>
                             <div className="flex items-center gap-4 mt-3 pt-3 border-t border-gray-200">
-                              <button onClick={() => handleViewSaved(speech.id)} className="text-sm font-medium text-brand-teal-600 hover:text-brand-teal-800 transition-colors">Xem chi tiết</button>
-                              <button onClick={() => handleDeleteSaved(speech.id)} className="text-gray-400 hover:text-red-600 transition-colors" aria-label="Xóa nội dung">
+                              <button onClick={() => handleViewSaved(doc.id)} className="text-sm font-medium text-brand-teal-600 hover:text-brand-teal-800 transition-colors">Xem chi tiết</button>
+                              <button onClick={() => handleDeleteSaved(doc.id)} className="text-gray-400 hover:text-red-600 transition-colors" aria-label="Xóa nội dung">
                                 <TrashIcon className="w-4 h-4"/>
                               </button>
                             </div>
@@ -459,6 +473,51 @@ const App: React.FC = () => {
           </section>
         </main>
       </div>
+
+      <Modal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+        title="Giới thiệu & Hướng dẫn sử dụng"
+      >
+        <div className="text-sm text-gray-600 space-y-4">
+            <p className="font-semibold text-base text-gray-800">Chào mừng bạn đến với Trợ lý AI Soạn thảo Văn bản!</p>
+            <p>
+                Ứng dụng này được thiết kế để giúp bạn nhanh chóng tạo ra các bản dự thảo văn bản hành chính theo đúng thể thức và quy chuẩn của Việt Nam.
+            </p>
+
+            <div>
+                <h3 className="font-semibold text-gray-800 mb-2">Quy trình sử dụng:</h3>
+                <ol className="list-decimal list-inside space-y-2">
+                    <li>
+                        <strong>Bước 1: Nhập dữ liệu</strong><br />
+                        Cung cấp các thông tin cần thiết vào biểu mẫu bên trái. Thông tin càng chi tiết, văn bản do AI tạo ra sẽ càng chính xác và phù hợp.
+                    </li>
+                    <li>
+                        <strong>Bước 2: Đính kèm tệp (Tùy chọn)</strong><br />
+                        Bạn có thể tải lên các tệp tài liệu liên quan (hình ảnh, PDF) ở mục "Căn cứ ban hành" và "Tư liệu liên quan". AI sẽ tự động trích xuất thông tin từ các tệp này để đưa vào văn bản.
+                    </li>
+                    <li>
+                        <strong>Bước 3: Soạn thảo</strong><br />
+                        Sau khi điền xong thông tin, nhấn nút "Soạn thảo văn bản". AI sẽ phân tích yêu cầu và tạo ra một bản dự thảo hoàn chỉnh ở khung kết quả bên phải.
+                    </li>
+                    <li>
+                        <strong>Bước 4: Tinh chỉnh với AI</strong><br />
+                        Sau khi có kết quả, bạn có thể sử dụng khung "Trò chuyện với AI để tinh chỉnh" để yêu cầu AI sửa đổi, bổ sung hoặc cải thiện văn bản. Ví dụ: "Thêm phần căn cứ pháp lý cho Quyết định X" hoặc "Làm cho phần lý do trang trọng hơn".
+                    </li>
+                    <li>
+                        <strong>Bước 5: Lưu trữ và Quản lý</strong><br />
+                        Mỗi văn bản được tạo sẽ tự động được lưu vào tab "Lịch sử lưu trữ". Bạn có thể xem lại hoặc xóa các phiên bản cũ tại đây.
+                    </li>
+                </ol>
+            </div>
+             <p className="pt-2">
+                Chúc bạn có một trải nghiệm hiệu quả với ứng dụng!
+            </p>
+            <p className="pt-4 mt-4 border-t border-gray-200 text-right text-xs text-gray-500">
+                Người phát triển: Đỗ Như Lâm
+            </p>
+        </div>
+      </Modal>
     </div>
   );
 };
